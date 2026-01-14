@@ -72,11 +72,15 @@ The target is intentionally aggressive for Sky130 and is expected to fail initia
 The project is structured in stages:
 
 0. **Stage 0 – Toolchain Bring-Up and Baseline Setup**
-   - LibreLane-based ASIC flow setup (Nix-managed, Sky130 PDK)
+   - LibreLane-based ASIC flow setup (Dockerized execution, Sky130 PDK)
    - Minimal test design to validate synthesis, STA, and PnR flow
    - Definition of baseline constraints (clock, reset, I/O assumptions)
    - Establishment of reproducible flow before RTL experimentation
-   - Toolchain versions are pinned and reproducible via Nix
+   - Toolchain versions are pinned and reproducible via LibreLane’s Dockerized environment
+   - #### Toolchain Reproducibility Note
+      - Initial attempts were made to reproduce the LibreLane toolchain using a Nix-based environment. This approach exposed incompatibilities between pinned Yosys versions and plugin stacks, resulting in non-actionable infrastructure failures unrelated to datapath design.
+      - To preserve focus on ASIC timing and architectural iteration, the project transitioned to LibreLane’s officially supported Dockerized execution path. This environment provides a coherent, version-locked toolchain validated by upstream and was verified via the official LibreLane smoke test.
+      - All subsequent iterations assume the Dockerized LibreLane environment.
 
 1. **Stage 1A – Naïve MAC**
    - Single-cycle accumulation
