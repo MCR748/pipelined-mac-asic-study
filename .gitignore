@@ -1,0 +1,45 @@
+# Editor / OS junk
+*~
+*.swp
+*.swo
+.DS_Store
+.vscode/
+.idea/
+
+# Build artifacts
+*.log
+*.out
+*.tmp
+
+# Simulation outputs
+*.vcd
+*.fst
+*.wlf
+*.vvp
+*.elf
+
+# LibreLane / OpenLane runs (VERY IMPORTANT)
+flow/**/runs/
+flow/**/results/
+flow/**/logs/
+flow/**/reports/
+flow/**/tmp/
+
+# Tool-generated netlists
+*.vg
+*.vnet
+*.spef
+*.sdf
+
+# STA / timing junk
+*.rpt
+*.timing
+*.summary
+
+# Python cache (some flows use it)
+__pycache__/
+*.pyc
+
+# Nix artifacts (keep repo clean)
+result
+.nix-shell
