@@ -18,6 +18,10 @@
 *.vvp
 *.elf
 
+# Verilator build artifacts
+obj_dir/
+.verilator/
+
 # LibreLane / OpenLane runs (VERY IMPORTANT)
 flow/**/runs/
 flow/**/results/
@@ -36,10 +40,10 @@ flow/**/tmp/
 *.timing
 *.summary
 
-# Python cache (some flows use it)
+# Python cache
 __pycache__/
 *.pyc
 
-# Nix artifacts (keep repo clean)
-result
-.nix-shell
+# Docker local config
+.env
+docker-compose.override.yml

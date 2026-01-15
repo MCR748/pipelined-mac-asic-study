@@ -136,5 +136,66 @@ This iteration is considered successful if:
 ### Next Step
 Complete **Stage 0 – Toolchain Bring-Up and Baseline Setup** by validating the LibreLane + Sky130 flow using a trivial register-based design, ensuring that synthesis, STA, CTS, and routing reports are interpretable before introducing datapath complexity.
 
+---
+
+## Iteration 1 – Stage 0.2: Baseline RTL Discipline and Reset Semantics
+
+During Stage 0.2, the baseline RTL was revised to remove FPGA-centric assumptions that interfered with establishing a clean ASIC timing reference.
+
+---
+
+### Reset Semantics
+
+   - The initial RTL used an asynchronous reset.
+   - This was identified as problematic for baseline timing analysis due to:
+     - Introduction of reset recovery and removal timing checks.
+     - Reset deassertion behaving as an independent timing event.
+     - Reset skew not being managed by clock tree synthesis.
+     - Ambiguity in STA results when isolating datapath-related timing effects.
+
+   **Decision**
+   - Replace asynchronous reset with a synchronous, active-high reset.
+
+   **Rationale**
+   - Synchronous reset:
+     - Is sampled only on the clock edge.
+     - Eliminates recovery/removal timing constraints.
+     - Avoids introducing an additional global control tree.
+     - Keeps reset behavior within the normal clocked timing domain.
+
+---
+
+### Baseline Timing Discipline
+
+   - Stage 0 timing measurements are intended to reflect:
+     - Register-to-register paths.
+     - Clock behavior and uncertainty.
+     - Toolchain interpretation of basic synchronous logic.
+
+   - To preserve this intent:
+     - Additional global control paths (e.g., asynchronous reset trees) are avoided.
+     - Special-case timing constraints are deferred to later stages.
+
+---
+
+### Working Guidelines Established
+
+   - Synchronous resets are preferred for datapath-oriented ASIC designs.
+     - Reset behavior should not introduce independent timing domains during early analysis.
+   - Baseline timing measurements should minimize non-datapath effects.
+     - Timing results should be attributable to RTL structure, not control infrastructure.
+   - FPGA reset conventions are not assumed to be valid for ASIC flows.
+     - Reset semantics must be evaluated explicitly in the context of STA and CTS.
+
+---
+
+### Status
+
+   - The baseline RTL is now:
+     - Fully synchronous.
+     - Deterministic.
+     - Suitable for unambiguous interpretation of synthesis, STA, and physical design results.
+
+
 
 
