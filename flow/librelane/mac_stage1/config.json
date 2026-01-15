@@ -1,0 +1,11 @@
+{
+  "DESIGN_NAME": "mac_top",
+
+  "VERILOG_FILES": [
+    "../work/MAC/rtl/mac/mac_pkg.sv",
+    "../work/MAC/rtl/mac/mac_top.sv"
+  ],
+
+  "PNR_SDC_FILE": "../work/MAC/flow/librelane/mac_stage1/constraints/mac.sdc",
+  "SIGNOFF_SDC_FILE": "../work/MAC/flow/librelane/mac_stage1/constraints/mac.sdc"
+}

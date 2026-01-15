@@ -34,16 +34,16 @@ module mac_top #(
         end
         else
         begin
-            if (input_valid)
-            begin
-                r_a <= input_a;
-                r_b <= input_b;
-            end
+            // Input stage
+            r_a <= input_a;
+            r_b <= input_b;
             r_input_valid <= input_valid;
 
+            // Mutliply stage
             r_mul <= {r_a, r_b};
             r_mul_valid <= r_input_valid;
 
+            // Accumulator stage
             r_out <= {r_mul << 8, 8'b0};
             r_out_valid <= r_mul_valid;
         end

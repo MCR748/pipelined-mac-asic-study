@@ -81,21 +81,25 @@ The project is structured in stages:
          - Detect semantic mismatches between intended datapath behavior and RTL implementation.
       - Simulation results were not used to justify timing decisions, only to confirm correctness before entering the ASIC flow.
 
-1. **Stage 1A – Naïve MAC**
-   - Single-cycle accumulation
-   - Unpipelined multiplier and adder
-   - Expected to violate timing
+1. **Stage 1A – Multiplier Timing Closure**
+   - Datapath skeleton with registered stages
+   - Focus on implementing a correct, signed multiplier
+   - Multiplier designed and refined to meet timing targets
+   - Accumulation logic remains functionally placeholder
+   - Objective is to isolate and close timing on the multiplier path
 
-2. **Stage 1B – Multiplier-Pipelined MAC**
-   - Multiplier decomposed into pipeline sub-stages
-   - Accumulator adder remains unpipelined
-   - Accumulation remains cycle-accurate
-   - Intended to reduce combinational depth while preserving baseline semantics
+2. **Stage 1B – Adder / Accumulator Timing Closure**
+   - Multiplier implementation from Stage 1A retained
+   - Accumulator adder implemented and refined to meet timing
+   - Feedback path analyzed and optimized
+   - Datapath now functionally represents a MAC
+   - Objective is to close timing on the loop-carried accumulation path
 
-3. **Stage 1C – Adder-Pipelined MAC**
-   - Accumulator adder decomposed into pipeline sub-stages
-   - Latency-correct (not cycle-accurate) accumulation
-   - Explicit breaking of loop-carried critical paths
+3. **Stage 1C – Datapath Refinement and Latency Alignment**
+   - Joint optimization of multiplier and accumulator pipeline structure
+   - Latency alignment and valid propagation refinement
+   - Exploration of cycle-accurate vs latency-correct semantics
+   - Explicit breaking or restructuring of critical feedback paths
 
 4. **Stage 2 – Control Integration**
    - APB-based register interface
