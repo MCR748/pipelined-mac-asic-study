@@ -6,11 +6,6 @@
 .vscode/
 .idea/
 
-# Build artifacts
-*.log
-*.out
-*.tmp
-
 # Simulation outputs
 *.vcd
 *.fst
@@ -22,23 +17,14 @@
 obj_dir/
 .verilator/
 
-# LibreLane / OpenLane runs (VERY IMPORTANT)
-flow/**/runs/
-flow/**/results/
-flow/**/logs/
-flow/**/reports/
-flow/**/tmp/
+# LibreLane generated runs
+flow/librelane/*/runs/
 
 # Tool-generated netlists
 *.vg
 *.vnet
 *.spef
 *.sdf
-
-# STA / timing junk
-*.rpt
-*.timing
-*.summary
 
 # Python cache
 __pycache__/

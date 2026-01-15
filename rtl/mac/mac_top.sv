@@ -1,5 +1,3 @@
-`timescale 1ns / 1ps
-
 module mac_top #(
         parameter INPUT_WIDTH = 16,
         parameter OUTPUT_WIDTH = 40

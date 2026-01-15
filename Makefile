@@ -1,4 +1,4 @@
-PROJECT_DIR   := /mnt/Uni/ASIC/MAC
+PROJECT_DIR := /home/mcrparadox/work/MAC
 LIBRELANE_DIR := $(HOME)/librelane
 
 # LibreLane configuration
@@ -69,32 +69,29 @@ waves: waveform.vcd
 lint:
 	$(VERILATOR) --lint-only --sv $(RTL_SRCS)
 
-.PHONY: sim-clean
 sim-clean:
 	rm -rf $(OBJ_DIR)
 	rm -f .stamp.verilate waveform.vcd
 
 
 # ---------------- LibreLane flow --------------------------
-.PHONY: flow-link
-flow-link:
-	@echo "Linking LibreLane design..."
-	@if [ ! -L "$(LL_DESIGN_LINK)" ]; then \
-		ln -s "$(PROJECT_DESIGN)" "$(LL_DESIGN_LINK)"; \
-		echo "Symlink created: $(LL_DESIGN_LINK)"; \
+.PHONY: flow
+flow:
+	cd $(LIBRELANE_DIR) && . $(HOME)/librelane-venv/bin/activate && \
+	python3 -m librelane --dockerized --pdk-root $(HOME)/.ciel/ciel $(PROJECT_DIR)/flow/librelane/$(STAGE)/config.json
+
+.PHONY: flow-prune
+flow-prune:
+	@echo "Pruning LibreLane runs (keeping latest)..."
+	@RUN_DIR="$(PROJECT_DIR)/flow/librelane/$(STAGE)/runs"; \
+	if [ -d "$$RUN_DIR" ]; then \
+		ls -1dt $$RUN_DIR/RUN_* 2>/dev/null | tail -n +2 | xargs -r rm -rf; \
 	else \
-		echo "Symlink already exists"; \
+		echo "No runs directory found."; \
 	fi
 
-.PHONY: flow-mount
-flow-mount:
-	cd $(LIBRELANE_DIR) && make mount
-
-.PHONY: flow-run
-flow-run: flow-link
-	cd $(LIBRELANE_DIR) && make mount
-
 # ----------------------------------------------------------
+
 # Global clean
 .PHONY: clean
-clean: sim-clean
+clean: sim-clean flow-prune
