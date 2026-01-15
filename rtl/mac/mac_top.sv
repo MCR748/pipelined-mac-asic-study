@@ -2,54 +2,63 @@ module mac_top #(
         parameter INPUT_WIDTH = 16,
         parameter OUTPUT_WIDTH = 40
     ) (
-        input wire clk,
-        input wire rst,
-        input wire [INPUT_WIDTH -  1 : 0] input_a,
-        input wire [INPUT_WIDTH -  1 : 0] input_b,
-        input wire input_valid,
-        output wire [OUTPUT_WIDTH - 1 : 0] output_val,
-        output wire output_valid
+        input wire i_clk,
+        input wire i_rst,
+        input wire [INPUT_WIDTH -  1 : 0] i_a,
+        input wire [INPUT_WIDTH -  1 : 0] i_b,
+        input wire i_valid,
+        output wire [OUTPUT_WIDTH - 1 : 0] o_val,
+        output wire o_valid
     );
     reg [INPUT_WIDTH - 1 : 0] r_a;
     reg [INPUT_WIDTH - 1 : 0] r_b;
-    reg r_input_valid;
+    reg r_i_valid;
 
-    reg [INPUT_WIDTH * 2 - 1 : 0] r_mul;
-    reg r_mul_valid;
+    wire [INPUT_WIDTH*2-1:0] w_mul_val;
+    wire w_mul_valid;
 
-    reg [OUTPUT_WIDTH - 1 : 0] r_out;
-    reg r_out_valid;
+    reg [OUTPUT_WIDTH - 1 : 0] r_o_val;
+    reg r_o_valid;
 
-    always @(posedge clk)
+    always @(posedge i_clk)
     begin
-        if (rst)
+        if (i_rst)
         begin
             r_a <= 0;
             r_b <= 0;
-            r_mul <= 0;
-            r_out <= 0;
-            r_input_valid <= 0;
-            r_mul_valid <= 0;
-            r_out_valid <= 0;
+            r_o_val <= 0;
+            r_i_valid <= 0;
+            r_o_valid <= 0;
         end
         else
         begin
             // Input stage
-            r_a <= input_a;
-            r_b <= input_b;
-            r_input_valid <= input_valid;
+            r_a <= i_a;
+            r_b <= i_b;
+            r_i_valid <= i_valid;
 
-            // Mutliply stage
-            r_mul <= {r_a, r_b};
-            r_mul_valid <= r_input_valid;
 
             // Accumulator stage
-            r_out <= {r_mul << 8, 8'b0};
-            r_out_valid <= r_mul_valid;
+            r_o_val <= {w_mul_val << 8, 8'b0};
+            r_o_valid <= w_mul_valid;
         end
     end
 
-    assign output_val = r_out;
-    assign output_valid = r_out_valid;
+    assign o_val = r_o_val;
+    assign o_valid = r_o_valid;
+
+    mac_mul #(
+        .INPUT_WIDTH (INPUT_WIDTH),
+        .OUTPUT_WIDTH(INPUT_WIDTH*2)
+    ) u_mac_mul (
+        .i_clk       (i_clk),
+        .i_rst       (i_rst),
+        .i_mul_a     (r_a),
+        .i_mul_b     (r_b),
+        .i_mul_valid (r_i_valid),
+        .o_mul_val   (w_mul_val),
+        .o_mul_valid (w_mul_valid)
+    );
+
 
 endmodule

@@ -195,3 +195,87 @@ During Stage 0.2, the baseline RTL was revised to remove FPGA-centric assumption
      - Fully synchronous.
      - Deterministic.
      - Suitable for unambiguous interpretation of synthesis, STA, and physical design results.
+
+## Iteration 2 – Multiplier Reduction vs Final Addition: Timing Reality Check
+
+This iteration documents architectural insights that emerged only after full synthesis, CTS, and post-route STA. These observations refine earlier assumptions and establish a clear boundary between scalable arithmetic structures and fundamental timing limits.
+
+
+### A. Wallace / CSA Tree Behavior in Practice
+
+The multiplier was implemented using a classical three-phase structure:
+
+- Partial product generation
+- Multi-level carry-save adder (CSA) reduction (Wallace-style)
+- Final carry-propagate adder (CPA)
+
+Observations:
+- CSA reduction stages scaled well with pipelining.
+- Additional CSA levels did not significantly degrade timing when each level was registered.
+- The final CPA consistently dominated the critical path.
+
+This behavior directly correlated with STA results and confirmed that CSA logic is amenable to deep pipelining, while the CPA is not.
+
+### B. Discovery: Uniform Pipelining != Uniform Timing
+
+A key realization from this iteration:
+
+- All stages were fully registered.
+- Each stage nominally had a full clock cycle.
+- Despite this, timing violations persisted.
+
+Root cause:
+- Logic depth within a stage matters more than the presence of registers alone.
+- The CPA’s carry propagation creates a serial dependency that consumes most of the cycle.
+- Even with clean register boundaries, the CPA remained the slowest structure.
+
+This explained why the design failed timing despite “correct” pipelining discipline.
+
+### C. Concrete STA Evidence
+
+Static timing analysis revealed a clear shift in the critical path:
+
+- **Earlier expectation**:
+  - CSA logic + routing + CPA combined
+- **Observed post-CTS path**:
+  - `r_stg3/Q → CPA → r_o_val/D`
+
+Quantitative evidence:
+- Worst negative slack improved from approximately **–0.71 ns** to **–0.50 ns** after architectural adjustments.
+- The critical path consistently traversed specific carry-chain bits (e.g., `adder_b[8]`), confirming carry propagation dominance rather than random routing effects.
+
+This provided a direct cause → effect link between RTL structure and STA results.
+
+Additional observation:
+- Introducing an extra pipeline register immediately before the final CPA improved slack, even though the CPA inputs were already driven by registers.
+- This improvement came from reduced fanout, lower capacitive loading, and improved buffering and cell sizing around the CPA inputs, not from reduced logical depth.
+
+This effect is ASIC-specific:
+- In ASIC flows, register placement reshapes electrical load, wire length, and buffering decisions that directly impact timing.
+- FPGA tools largely abstract these effects through fixed routing fabrics and pre-characterized arithmetic blocks, making such register duplication appear redundant.
+
+### D. Architectural Conclusion: CPA Is a Different Class of Problem
+
+This iteration established a fundamental distinction:
+
+- CSA trees are **reduction structures**
+  - Parallel
+  - Scalable with depth
+  - Well-suited to aggressive pipelining
+- CPAs are **propagation structures**
+  - Serial by nature
+  - Frequency-limiting
+  - Poorly mitigated by tool-level optimization alone
+
+This marks the transition from RTL-level tuning to true architectural reasoning.
+
+### E. Decision Space Moving Forward
+
+Based on observed timing behavior, the valid architectural options are:
+
+- Insert an additional pipeline stage within the final CPA
+- Accept increased latency in exchange for timing closure
+- Relax the clock target
+- Explicitly reject the assumption that CTS or routing optimization will resolve CPA-dominated timing paths
+
+These options define the constrained and realistic solution space for subsequent iterations.

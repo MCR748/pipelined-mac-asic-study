@@ -3,8 +3,13 @@
 
   "VERILOG_FILES": [
     "../work/MAC/rtl/mac/mac_pkg.sv",
+    "../work/MAC/rtl/mac/mac_csa.sv",
+    "../work/MAC/rtl/mac/mac_mul.sv",
     "../work/MAC/rtl/mac/mac_top.sv"
   ],
+
+  "CORE_UTILIZATION": 0.60,
+  "CLOCK_PORT": "i_clk",
 
   "PNR_SDC_FILE": "../work/MAC/flow/librelane/mac_stage1/constraints/mac.sdc",
   "SIGNOFF_SDC_FILE": "../work/MAC/flow/librelane/mac_stage1/constraints/mac.sdc"

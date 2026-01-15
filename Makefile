@@ -2,7 +2,7 @@ PROJECT_DIR := /home/mcrparadox/work/MAC
 LIBRELANE_DIR := $(HOME)/librelane
 
 # LibreLane configuration
-STAGE := mac_stage0
+STAGE := mac_stage1
 
 LL_DESIGNS_DIR := $(LIBRELANE_DIR)/designs
 LL_DESIGN_LINK := $(LL_DESIGNS_DIR)/$(STAGE)
@@ -16,8 +16,7 @@ OBJ_DIR    := obj_dir
 
 VERILATOR  := verilator
 
-VFLAGS := --cc --exe --trace --sv -Wall \
-          --x-assign unique --x-initial unique
+VFLAGS := --cc --exe --trace --sv -Wall --x-assign unique --x-initial unique -I$(RTL_DIR)
 
 RTL_SRCS := \
 	$(RTL_DIR)/mac_pkg.sv \

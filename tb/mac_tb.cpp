@@ -6,9 +6,16 @@
 #include "Vmac_top.h"
 
 #define MAX_SIM_TIME 300
-#define PIPELINE_LATENCY 3
+#define PIPELINE_LATENCY 8
 
 vluint64_t sim_time = 0;
+
+int16_t a = 0;
+int16_t b = 0;
+int32_t product = 0;
+int64_t shifted = 0;
+
+bool test_failed = false;
 
 int main(int argc, char** argv, char** env) {
     Vmac_top *dut = new Vmac_top;
@@ -23,51 +30,51 @@ int main(int argc, char** argv, char** env) {
     bool       exp_valid_q[PIPELINE_LATENCY] = {0};
 
     // ---------------- Initial conditions ----------------
-    dut->clk = 0;
-    dut->rst = 1;
-    dut->input_a = 0;
-    dut->input_b = 0;
-    dut->input_valid = 0;
+    dut->i_clk = 0;
+    dut->i_rst = 1;
+    dut->i_a = 0;
+    dut->i_b = 0;
+    dut->i_valid = 0;
 
     while (sim_time < MAX_SIM_TIME) {
 
         // ---------------- Clock toggle ----------------
-        dut->clk ^= 1;
+        dut->i_clk ^= 1;
 
         // ---------------- Rising edge behavior ----------------
-        if (dut->clk) {
+        if (dut->i_clk) {
 
             int cycle = sim_time / 2;
 
             // -------- Reset logic (matches SV TB) --------
-            dut->rst = (cycle < 4);
+            dut->i_rst = (cycle < 4);
 
             // -------- Stimulus schedule --------
-            dut->input_valid = 0;
+            dut->i_valid = 0;
 
             if (cycle == 5) {
-                dut->input_a = 0x01;
-                dut->input_b = 0x02;
-                dut->input_valid = 1;
+                dut->i_a = 0x01;
+                dut->i_b = 0x02;
+                dut->i_valid = 1;
             }
             else if (cycle == 7) {
-                dut->input_a = 0x03;
-                dut->input_b = 0x04;
-                dut->input_valid = 1;
+                dut->i_a = 0x03;
+                dut->i_b = 0x04;
+                dut->i_valid = 1;
             }
             else if (cycle == 8) {
-                dut->input_a = 0x05;
-                dut->input_b = 0x06;
-                dut->input_valid = 1;
+                dut->i_a = 0x05;
+                dut->i_b = 0x06;
+                dut->i_valid = 1;
             }
             else if (cycle == 11) {
-                dut->input_a = 0x07;
-                dut->input_b = 0x08;
-                dut->input_valid = 1;
+                dut->i_a = 0x07;
+                dut->i_b = 0x08;
+                dut->i_valid = 1;
             }
 
             // -------- Expected pipeline model --------
-            if (dut->rst) {
+            if (dut->i_rst) {
                 for (int i = 0; i < PIPELINE_LATENCY; i++) {
                     exp_data_q[i]  = 0;
                     exp_valid_q[i] = 0;
@@ -80,9 +87,14 @@ int main(int argc, char** argv, char** env) {
                 }
 
                 // stage 0
-                exp_data_q[0] =
-                  (((vluint64_t)dut->input_a << 16) | (vluint64_t)dut->input_b) << 16;
-                exp_valid_q[0] = dut->input_valid;
+                a = (int16_t)dut->i_a;
+                b = (int16_t)dut->i_b;
+                product = (int32_t)a * (int32_t)b;
+                shifted = ((int64_t)product) << 16;
+
+                exp_data_q[0]  = (int64_t)shifted;
+                exp_valid_q[0] = dut->i_valid;
+
             }
         }
 
@@ -90,25 +102,28 @@ int main(int argc, char** argv, char** env) {
         dut->eval();
 
         // ---------------- Checking (after eval, rising edge only) ----------------
-        if (dut->clk && !dut->rst) {
+        if (dut->i_clk && !dut->i_rst) {
 
-            if (dut->output_valid != exp_valid_q[PIPELINE_LATENCY - 1]) {
+            if (dut->o_valid != exp_valid_q[PIPELINE_LATENCY - 1]) {
                 std::cerr << "VALID mismatch at cycle "
                           << (sim_time / 2)
                           << " exp=" << exp_valid_q[PIPELINE_LATENCY - 1]
-                          << " got=" << dut->output_valid
+                          << " got=" << dut->o_valid
                           << std::endl;
-                exit(1);
+                test_failed = true;
+                break;
+
             }
 
-            if (dut->output_valid) {
-                if (dut->output_val != exp_data_q[PIPELINE_LATENCY - 1]) {
+            if (dut->o_valid) {
+                if (dut->o_val != exp_data_q[PIPELINE_LATENCY - 1]) {
                     std::cerr << "DATA mismatch at cycle "
                               << (sim_time / 2)
                               << " exp=0x" << std::hex << exp_data_q[PIPELINE_LATENCY - 1]
-                              << " got=0x" << dut->output_val
+                              << " got=0x" << dut->o_val
                               << std::dec << std::endl;
-                    exit(1);
+                    test_failed = true;
+                    break;
                 }
             }
         }
@@ -117,9 +132,22 @@ int main(int argc, char** argv, char** env) {
         sim_time++;
     }
 
-    std::cout << "STAGE 0 TB PASSED" << std::endl;
+    // Dump a few extra cycles if failed (post-mortem visibility)
+    if (test_failed) {
+        for (int i = 0; i < 10; i++) {
+            dut->eval();
+            m_trace->dump(sim_time++);
+        }
+    }
 
     m_trace->close();
     delete dut;
-    exit(EXIT_SUCCESS);
+
+    if (test_failed) {
+        std::cerr << "TEST FAILED — waveform preserved" << std::endl;
+        return EXIT_FAILURE;
+    } else {
+        std::cout << "STAGE 0 TB PASSED" << std::endl;
+        return EXIT_SUCCESS;
+    }
 }
