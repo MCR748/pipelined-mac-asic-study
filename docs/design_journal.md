@@ -299,3 +299,146 @@ These modifications significantly increased logic depth and fanout in Stage-0, d
 A key learning was that signed-multiplier support must be treated as a first-class architectural decision, not a late-stage functional patch. Retrofitting signed behavior into an unsigned reduction tree complicates both timing closure and verification.
 
 As a result, subsequent iterations temporarily constrained the multiplier to unsigned operation to isolate datapath timing behavior, with the intention of reintroducing signed support via a structurally correct, pipelined signed-multiplier architecture.
+
+## Iteration 2 (Continued) – Prefix Adder and Wallace Tree: Full-Pipeline Necessity
+
+This subsection records the architectural conclusions reached after repeated attempts to close timing on both the carry-propagate adder (CPA) and the multiplier reduction tree under worst-case PVT conditions.
+
+---
+
+## G. Brent–Kung Adder: Mid-Tree Pipelining Attempt and Failure
+
+Following identification of the CPA as the dominant timing limiter, the final adder was reimplemented as a Brent–Kung parallel prefix adder, selected for its reduced logic depth compared to ripple carry and lower wiring complexity compared to Kogge–Stone.
+
+### Initial Hypothesis
+
+It was hypothesized that:
+
+- A Brent–Kung structure, combined with selective mid-tree pipelining, would be sufficient to meet the 500 MHz target.
+- Inserting registers at timing-identified internal prefix levels (e.g., between level-2 and level-3) would bound per-cycle logic depth.
+- Tools would balance remaining prefix logic through buffering and cell upsizing.
+
+### Implementation Strategy
+
+- Generate/propagate (p/g) signals were registered.
+- Prefix tree levels were constructed incrementally.
+- Pipeline registers were inserted inside the Brent–Kung tree at locations suggested by STA critical paths.
+- Valid signals were propagated alongside prefix data to preserve functional alignment.
+
+### Observed Outcome
+
+Despite these measures:
+
+- Timing closure failed at worst-case corners, most notably `max_ss_100C_1v60`.
+- STA consistently reported violations inside prefix logic feeding intermediate generate nodes (e.g., `gn3[*]`), even when earlier levels were registered.
+- Incremental pipelining reduced slack marginally but did not eliminate violations.
+
+### Key Insight
+
+This demonstrated that:
+
+- Partial or opportunistic pipelining of a propagation structure is insufficient under aggressive frequency targets.
+- Even though each prefix level was logically shallow, electrical reality—fanout, wire length, and AOI/OAI gate collapse—caused multiple prefix levels to be effectively traversed within a single cycle.
+- This invalidated the assumption that a “mostly pipelined” prefix adder is adequate for 500 MHz in Sky130.
+
+---
+
+## H. Architectural Resolution: Fully Pipelined Prefix Adder
+
+The Brent–Kung adder was ultimately restructured into a fully pipelined prefix network, with:
+
+- One prefix-combine level per pipeline stage
+- Registers inserted between every prefix level
+- Explicit valid propagation through all stages
+- Final carry generation and sum XOR isolated in their own registered stage
+
+This resulted in:
+
+- Increased latency
+- Stable timing closure across worst-case corners
+- Predictable and bounded per-stage logic depth
+
+This confirmed a critical architectural rule:
+
+> At aggressive clock targets, propagation structures (CPAs) must be pipelined at every logical depth, not merely at “convenient” boundaries.
+
+---
+
+## I. Wallace / CSA Tree: Secondary Timing Bottleneck
+
+After stabilizing the CPA, attention returned to the multiplier’s Wallace reduction tree.
+
+### Initial CSA Strategy
+
+- A classical Wallace-style reduction was implemented using carry-save adders (CSAs).
+- Multiple CSA levels were grouped between pipeline registers (e.g., one register after every two CSA layers).
+- This structure was expected to be timing-safe due to the local nature of CSA logic.
+
+### Observed Timing Behavior
+
+STA revealed that:
+
+- While individual CSAs are shallow, grouping multiple CSA stages per cycle created:
+  - Large fanout on intermediate sum/carry buses
+  - Long horizontal routes due to wide operand buses
+  - AOI/OAI gate collapse across CSA boundaries
+- Timing violations emerged inside the CSA tree, independent of the final CPA.
+- These violations were not random:
+  - They consistently appeared in later CSA stages where operand width and routing span were largest.
+- Post-CTS timing degraded further due to clock skew and wire delay, confirming the structural nature of the issue.
+
+---
+
+## J. Architectural Resolution: Fully Pipelined Wallace Tree
+
+To resolve this, the Wallace tree was restructured to be fully pipelined, with:
+
+- Exactly one CSA reduction level per cycle
+- Explicit registers between every CSA stage
+- Carry shifting performed outside the CSA itself
+- Valid propagation aligned stage-by-stage
+
+This eliminated:
+
+- Multi-level CSA logic in a single cycle
+- Wide reconvergent paths
+- Unbounded routing delay within a stage
+
+The resulting structure mirrors industrial high-frequency multipliers:
+
+- Deep pipeline
+- High throughput (1 result per cycle)
+- Latency traded explicitly for frequency
+
+---
+
+## K. Consolidated Architectural Learning
+
+This iteration establishes several non-negotiable principles for high-frequency ASIC datapaths:
+
+- Propagation structures (CPAs) and reduction structures (CSAs) behave fundamentally differently
+- CSAs scale well with pipelining
+- CPAs do not tolerate partial pipelining
+- “Fully registered” does not imply “timing-safe”
+- Logic depth within a stage remains the dominant factor
+- Register placement reshapes electrical and routing behavior
+- Worst-case PVT corners dictate architecture
+- Designs that nearly pass at typical corners will fail catastrophically at SS / high temperature
+- Architectural decisions must be justified at worst case, not average case
+- FPGA intuition is actively misleading for ASIC timing
+- Fixed carry chains and abstracted routing hide effects that dominate ASIC performance
+- Deep, explicit pipelining is unavoidable at aggressive frequencies
+
+---
+
+## Current State of Iteration 2
+
+- Both the Wallace reduction tree and Brent–Kung CPA are fully pipelined.
+- Timing closure is achieved through architectural means, not tool-level optimization.
+- Latency is increased but explicitly managed.
+- The datapath is now suitable as a stable foundation for:
+  - Signed arithmetic reintroduction
+  - Accumulation feedback
+  - Control-plane integration
+
+This reflects the current structurally timing-clean state of Iteration 2, with further extensions planned on top of a verified high-frequency datapath.
