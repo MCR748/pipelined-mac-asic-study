@@ -442,3 +442,289 @@ This iteration establishes several non-negotiable principles for high-frequency 
   - Control-plane integration
 
 This reflects the current structurally timing-clean state of Iteration 2, with further extensions planned on top of a verified high-frequency datapath.
+
+## Iteration 3 – Stage 1B (Extended): Post-PnR Timing Reality and Worst-Case Closure Limits
+
+This iteration records the results obtained after running the **full LibreLane ASIC flow** (synthesis → CTS → routing → post-route STA) on the Stage 1B design incorporating a CSA-based accumulator and a Brent–Kung canonicalization adder.
+
+The purpose of this iteration is to reconcile **architectural correctness** with **worst-case silicon feasibility**, rather than to claim unconditional timing closure.
+
+---
+
+### A. Full-Flow Execution Outcome
+
+The complete LibreLane flow finished successfully through manufacturability checks:
+
+- All physical design stages completed  
+- Layout and routing were generated  
+- Reports were produced for STA, routing, and manufacturability  
+
+However, the flow issued **explicit warnings** indicating unresolved timing and signal-integrity issues at worst-case corners.
+
+---
+
+### B. Timing Results Summary
+
+**Clock Target:** 500 MHz (2.0 ns)
+
+**Corner Analysis:**
+
+| Corner | Result |
+|------|------|
+| Typical | **Pass** |
+| Nominal SS @ 100 °C | **Fail** |
+| Worst-case SS @ 100 °C, 1.60 V | **Fail** |
+
+Reported by LibreLane checkers:
+
+- Setup violations at:
+  - `max_ss_100C_1v60`
+  - `min_ss_100C_1v60`
+  - `nom_ss_100C_1v60`
+- Max slew violations at:
+  - `max_ss_100C_1v60`
+- Post-CTS resizer unable to repair all setup violations
+
+This confirms that **architectural fixes alone were insufficient to guarantee worst-case closure at 500 MHz**, even though the design is functionally and structurally correct.
+
+---
+
+### C. Interpretation of the Result
+
+These results are **not contradictory** to the architectural conclusions of Stage 1B. Instead, they refine them:
+
+- The CSA-based accumulator **eliminated feedback-loop carry propagation**
+- Control-path removal **eliminated false critical paths**
+- The remaining violations arise from:
+  - Wire delay  
+  - Fanout  
+  - Slew limits  
+  - Post-CTS clock uncertainty  
+  - Worst-case PVT pessimism  
+
+The design now fails for **physical reasons**, not **conceptual or structural errors**.
+
+This marks a critical transition:
+
+> Timing failure is no longer diagnostic of architectural mistakes, but of **technology and frequency limits**.
+
+---
+
+### D. Key Observations from Post-PnR Reports
+
+- Large nets (200+ pins) were flagged as routing risks, indicating datapath width pressure.
+- Slew violations appeared only in worst-case corners, reinforcing that:
+  - The design is near the edge of feasibility  
+  - Minor electrical effects dominate at this point  
+- No functional or semantic violations were observed during simulation.
+
+---
+
+### E. Architectural Implication
+
+At this stage, the remaining options to close worst-case timing are **non-architectural**:
+
+- Reduce target frequency  
+- Introduce additional pipeline stages (latency increase)  
+- Apply physical optimization strategies:
+  - Net restructuring  
+  - Register duplication  
+  - Floorplanning constraints  
+- Accept typical-corner operation as the design point  
+
+Crucially, **no further arithmetic restructuring is justified**.
+
+---
+
+## Iteration 2 (Continued) – Stage 1B: Accumulator Feedback and Timing Reality
+
+This subsection records the architectural lessons that emerged while introducing accumulation feedback on top of a timing-clean, fully pipelined multiplier datapath.
+
+The intent of this stage was to transform the multiplier into a true MAC by adding an accumulator, while preserving the aggressive 500 MHz target under worst-case PVT conditions.
+
+---
+
+### L. Initial Assumption: Accumulator as a Carry-Propagate Adder
+
+#### Hypothesis
+
+The accumulator could be implemented as a conventional carry-propagate adder (CPA) with pipelining applied internally if required, similar to the treatment of the final multiplier adder.
+
+#### Observation
+
+This assumption failed immediately under sustained valid input.
+
+A pipelined accumulator violates the fundamental recurrence:
+  ```
+  acc(n+1) = acc(n) + product(n)
+  ```
+
+Introducing latency inside the feedback loop caused:
+
+- Accumulator state to lag behind incoming products  
+- Semantic mismatch between mathematical intent and RTL behavior  
+- Incorrect accumulation under continuous operation  
+
+#### Conclusion
+
+An accumulator cannot be multi-cycle unless additional architectural mechanisms are introduced (stalling, interleaving, or windowed reduction).
+
+For a true MAC, the accumulation recurrence must complete in a single architectural cycle.
+
+This invalidated the use of a pipelined CPA inside the accumulator feedback path.
+
+---
+
+### M. Accumulator Timing Bottleneck at 500 MHz
+
+#### Empirical STA Findings
+
+When implemented as a single-cycle CPA:
+
+- The accumulator feedback path became the dominant critical path:
+```
+acc_reg/Q → CPA → acc_reg/D
+```
+
+Even with a Brent–Kung adder:
+
+- Worst-case slack remained negative at SS / 100 °C  
+- Violations persisted post-CTS and post-route  
+- Critical paths consistently traversed carry-dependent bit positions  
+
+#### Key Insight
+
+The accumulator is not just another adder—it is a loop-carried dependency.
+
+Unlike feed-forward datapaths, it cannot amortize carry propagation across cycles.
+
+This placed the accumulator in a fundamentally different timing class from the multiplier.
+
+---
+
+### N. Architectural Resolution: Carry-Save Accumulator (CSA-Based)
+
+To satisfy both correctness and timing constraints, the accumulator was restructured as a carry-save accumulator.
+
+Two state registers are maintained:
+
+- `acc_sum`  
+- `acc_carry`  
+
+Each cycle performs carry-save addition:
+```
+{acc_sum, acc_carry} = acc_sum + acc_carry + product
+```
+
+No carry propagation occurs in the feedback loop.
+
+Only local XOR/AND logic is exercised per bit.
+
+#### Result
+
+- Loop-carried dependency preserved semantically  
+- Critical path reduced to CSA logic only  
+- Accumulation meets 500 MHz timing in Sky130 HD (pre-PnR)  
+
+This established a non-negotiable rule:
+
+> At aggressive clock targets, accumulator feedback must be carry-save.
+
+---
+
+### O. Canonicalization via Brent–Kung Adder (Outside the Loop)
+
+While CSA state is sufficient for accumulation, it is not directly observable as a numerical result.
+
+To produce a canonical output:
+
+- A Brent–Kung carry-propagate adder is applied after the accumulator  
+
+This CPA:
+
+- Is not part of the feedback loop  
+- May be fully pipelined  
+- Trades latency for timing closure  
+
+Canonicalization is treated as a read operation, not part of accumulation semantics.
+
+This separation allows:
+
+- Correct MAC behavior  
+- High-frequency operation  
+- Controlled placement of expensive carry propagation  
+
+---
+
+### P. Control vs Datapath Separation: Timing-Driven Discovery
+
+#### Observed Failure Mode
+
+Initial accumulator implementations gated CSA state updates using a valid signal.
+
+As synthesized:
+
+- Valid gating became data-path muxing  
+- Control logic (AND / OR / OAI) appeared on accumulator D-inputs  
+
+STA exposed paths such as:
+```
+mul_valid → control logic → acc_carry[D]
+```
+
+#### Consequence
+
+- Control signals polluted arithmetic timing paths  
+- Small control fanout delays dominated the critical path  
+- Timing failed despite shallow arithmetic logic  
+
+#### Resolution
+
+- Control signals were removed from arithmetic state updates  
+- Invalid cycles inject a zero operand instead of gating registers  
+- Accumulator state updates every cycle unconditionally  
+
+#### Architectural Rule Established
+
+Control and datapath must be structurally separated in high-frequency designs.
+
+Control should select operands, not gate arithmetic state.
+
+---
+
+### Q. Consolidated Learnings from Stage 1B
+
+This stage established two critical architectural facts:
+
+#### 1. Accumulators Cannot Be Multi-Cycle
+
+- A pipelined accumulator violates MAC semantics  
+- Loop-carried dependencies must complete in one architectural cycle  
+- Carry-save accumulation is the only scalable solution at high frequency  
+
+#### 2. Datapath and Control Must Be Isolated
+
+- Control gating on arithmetic registers creates hidden critical paths  
+- Valid signals must not participate in arithmetic feedback  
+- Zero-injection is preferable to register enable gating  
+
+These conclusions were enforced by STA evidence under worst-case PVT conditions.
+
+---
+
+### Status After Stage 1B
+
+- Accumulator feedback path is architecturally timing-clean  
+- CSA used for accumulation  
+- Brent–Kung used only for canonicalization  
+- Control logic removed from arithmetic state paths  
+- Remaining timing failures are physical, not structural  
+
+This completes Stage 1B and provides a structurally sound foundation for:
+
+- Signed arithmetic integration (Stage 1C)  
+- Control-plane attachment (Stage 2)  
+
+
+
+
