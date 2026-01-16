@@ -16,4 +16,23 @@ This project is structured as a chronological engineering log rather than a
 tutorial. All major architectural decisions, timing failures, and fixes are
 documented as they occurred.
 
-**Primary artifact:** `docs/design_journal.md`
+## Architectural Learnings
+
+This project derives a set of timing-driven architectural rules for high-frequency ASIC datapaths.
+
+See:
+- `docs/architectural_learnings.md` — distilled, non-negotiable design rules
+- `docs/design_journal.md` — chronological evidence and experiments
+
+## Project Status
+
+This repository captures a **completed architectural exploration phase** of a high-frequency ASIC MAC datapath.
+
+The goal of this phase was not unconditional timing closure, but to:
+- Expose structural timing limits
+- Derive non-negotiable architectural rules
+- Separate conceptual correctness from physical feasibility
+
+As documented in the design journal, this phase concludes with known limitations (e.g., unsigned multiplication and worst-case timing violations) that are explicitly acknowledged and used to define the scope of subsequent work.
+
+The repository should therefore be read as an **engineering investigation and architecture study**, not as a production-ready MAC implementation.

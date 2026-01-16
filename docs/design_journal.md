@@ -726,5 +726,130 @@ This completes Stage 1B and provides a structurally sound foundation for:
 - Control-plane attachment (Stage 2)  
 
 
+# Phase Closure – End of Unsigned MAC Architectural Exploration
+
+This section marks the deliberate conclusion of the current design phase, which focused on **unsigned multiplication, accumulator feedback, and aggressive frequency exploration** under Sky130 worst-case PVT conditions.
+
+The goal of this phase was **not** to achieve unconditional timing closure, but to:
+- Expose architectural limits
+- Identify non-negotiable timing rules
+- Separate structural correctness from physical feasibility
+
+That objective has been met.
+
+---
+
+## A. Known Outstanding Issues at Phase End
+
+The following limitations are explicitly acknowledged at the end of this phase:
+
+### 1. Multiplier Is Unsigned
+
+- The current datapath implements an **unsigned multiplier only**
+- Signed arithmetic was intentionally deferred to avoid conflating:
+  - Sign-handling complexity
+  - Partial-product correction logic
+  - And accumulator feedback timing
+- As a result, functional completeness for signed MAC operation is **not yet achieved**
+
+This is a known and accepted limitation of the current implementation.
+
+---
+
+### 2. Wallace / CSA Tree Still Violates Worst-Case Timing
+
+- Despite full pipelining, the Wallace reduction tree:
+  - Exhibits timing violations at worst-case SS / high-temperature corners
+  - Is sensitive to routing span and fanout in later CSA stages
+- These violations persist post-CTS and post-route
+
+This indicates that the design is approaching **physical feasibility limits** for:
+- Operand width
+- Clock target
+- Technology (Sky130)
+
+No further structural changes within the same architectural envelope are expected to resolve this.
+
+---
+
+### 3. CSA-Based Accumulator Still Fails at Worst-Case Corners
+
+- The accumulator architecture is **structurally correct**:
+  - Carry-save feedback
+  - No carry propagation in the loop
+  - Control-path separation enforced
+- However, worst-case STA still reports violations due to:
+  - Wire delay
+  - Fanout
+  - Slew constraints
+  - Post-CTS clock uncertainty
+
+This confirms that remaining failures are **physical**, not conceptual.
+
+---
+
+## B. Interpretation of These Failures
+
+These issues do **not** invalidate the architectural conclusions reached so far.
+
+Instead, they establish an important boundary:
+
+> The current unsigned MAC architecture is structurally correct,  
+> but exceeds the reliable worst-case operating envelope at 500 MHz in Sky130.
+
+At this point:
+- Arithmetic restructuring has been exhausted
+- Further progress requires **scope redefinition**, not iteration within the same scope
+
+---
+
+## C. Rationale for Ending This Phase
+
+Continuing iteration within the current constraints would:
+- Produce diminishing architectural insight
+- Blur the distinction between structural issues and technology limits
+- Obscure the learning objectives of the project
+
+Therefore, this phase is intentionally concluded.
+
+---
+
+## D. Defined Next Phase Objectives
+
+The next phase will proceed with **explicitly revised goals**:
+
+### Phase 2 – Signed Arithmetic and Accumulator Timing Closure
+
+Primary objectives:
+
+1. **Introduce a Signed Multiplier as a First-Class Architecture**
+   - Redesign partial-product generation for signed operands
+   - Incorporate sign correction (e.g., Baugh–Wooley or equivalent)
+   - Re-pipeline Stage-0 logic as required
+   - Quantify the timing and area cost of signed arithmetic
+
+2. **Revisit Accumulator Timing with a Narrower Focus**
+   - Re-evaluate CSA accumulator under signed operation
+   - Explore:
+     - Register duplication
+     - Net restructuring
+     - Floorplanning-aware constraints
+   - Determine whether worst-case closure is achievable without:
+     - Frequency reduction, or
+     - Additional latency
+
+3. **Explicitly Reframe Success Criteria**
+   - Success will be defined as:
+     - Architectural clarity
+     - Worst-case explainability
+     - Or an explicit declaration of infeasibility at the chosen frequency
+
+---
+
+## E. Phase Transition Statement
+
+This concludes the **Unsigned MAC Architectural Exploration Phase**.
+
+All subsequent work will be recorded under a new phase with revised assumptions, clearer feasibility boundaries, and narrower objectives.
 
 
