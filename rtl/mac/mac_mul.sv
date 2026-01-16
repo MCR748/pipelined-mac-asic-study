@@ -251,7 +251,7 @@ module mac_mul #(
       .INPUT_WIDTH(OUTPUT_WIDTH)
     ) u_mac_adder (
       .i_clk         (i_clk),
-      .i_rst        (i_rst),          // note polarity fix
+      .i_rst        (i_rst),
       .i_adder_a     (r_stg6[0]),
       .i_adder_b     (r_stg6[1]),
       .i_adder_valid (r_stg6_valid),

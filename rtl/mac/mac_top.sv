@@ -17,6 +17,21 @@ module mac_top #(
     wire [INPUT_WIDTH*2-1:0] w_mul_val;
     wire w_mul_valid;
 
+    wire [OUTPUT_WIDTH-1:0] w_acc_val;
+    wire                    w_acc_valid;
+
+    reg [OUTPUT_WIDTH-1:0] r_acc_sum;
+    reg [OUTPUT_WIDTH-1:0] r_acc_carry;
+    reg r_acc_valid;
+    
+    wire [OUTPUT_WIDTH-1:0] product_or_zero;
+
+    wire [OUTPUT_WIDTH-1:0] w_product_padded;
+
+    wire [OUTPUT_WIDTH-1:0] w_csa_sum_next;
+    wire [OUTPUT_WIDTH-1:0] w_csa_carry_next;
+
+
     reg [OUTPUT_WIDTH - 1 : 0] r_o_val;
     reg r_o_valid;
 
@@ -24,10 +39,15 @@ module mac_top #(
     begin
         if (i_rst)
         begin
-            r_a <= 0;
-            r_b <= 0;
-            r_o_val <= 0;
+            r_a <= '0;
+            r_b <= '0;
+            r_o_val <= '0;
             r_i_valid <= 0;
+
+            r_acc_sum <= '0;
+            r_acc_carry <= '0;
+            r_acc_valid <= 0;
+
             r_o_valid <= 0;
         end
         else
@@ -37,28 +57,50 @@ module mac_top #(
             r_b <= i_b;
             r_i_valid <= i_valid;
 
+            r_acc_sum   <= w_csa_sum_next;
+            r_acc_carry <= w_csa_carry_next;
+            r_acc_valid <= w_mul_valid;
 
             // Accumulator stage
-            r_o_val <= {8'b0, w_mul_val} << 8;
-            r_o_valid <= w_mul_valid;
+            r_o_val <= w_acc_val;
+            r_o_valid <= w_acc_valid;
         end
     end
+
+    assign w_product_padded = {8'b0, w_mul_val};
+
+    assign product_or_zero = w_mul_valid ? w_product_padded : '0;
+
+    assign w_csa_sum_next =   r_acc_sum ^ r_acc_carry ^ product_or_zero;
+
+    assign w_csa_carry_next = ((r_acc_sum & r_acc_carry) | (r_acc_sum & product_or_zero) | (r_acc_carry & product_or_zero)) << 1;
 
     assign o_val = r_o_val;
     assign o_valid = r_o_valid;
 
     mac_mul #(
-        .INPUT_WIDTH (INPUT_WIDTH),
-        .OUTPUT_WIDTH(INPUT_WIDTH*2)
-    ) u_mac_mul (
-        .i_clk       (i_clk),
-        .i_rst       (i_rst),
-        .i_mul_a     (r_a),
-        .i_mul_b     (r_b),
-        .i_mul_valid (r_i_valid),
-        .o_mul_val   (w_mul_val),
-        .o_mul_valid (w_mul_valid)
-    );
+                .INPUT_WIDTH (INPUT_WIDTH),
+                .OUTPUT_WIDTH(INPUT_WIDTH*2)
+            ) u_mac_mul (
+                .i_clk       (i_clk),
+                .i_rst       (i_rst),
+                .i_mul_a     (r_a),
+                .i_mul_b     (r_b),
+                .i_mul_valid (r_i_valid),
+                .o_mul_val   (w_mul_val),
+                .o_mul_valid (w_mul_valid)
+            );
 
+    mac_accumulator #(
+                        .INPUT_WIDTH (OUTPUT_WIDTH)
+                    ) u_mac_acc (
+                        .i_clk         (i_clk),
+                        .i_rst         (i_rst),
+                        .i_adder_a     (r_acc_carry),
+                        .i_adder_b     (r_acc_sum),
+                        .i_adder_valid (r_acc_valid),
+                        .o_adder_val   (w_acc_val),
+                        .o_adder_valid (w_acc_valid)
+                    );
 
 endmodule

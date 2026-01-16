@@ -6,7 +6,7 @@
 #include "Vmac_top.h"
 
 #define MAX_SIM_TIME 300
-#define PIPELINE_LATENCY 18
+#define PIPELINE_LATENCY 26
 
 struct test_vec {int cycle; uint16_t a;  uint16_t b;};
 
@@ -32,6 +32,7 @@ uint16_t a = 0;
 uint16_t b = 0;
 uint64_t shifted = 0;
 uint64_t product64 = 0;
+uint64_t exp_acc = 0;
 
 bool test_failed = false;
 
@@ -95,6 +96,8 @@ int main(int argc, char** argv, char** env) {
                     exp_valid_q[i] = 0;
                     exp_test_q[i] = -1;
                 }
+                exp_acc = 0;
+
             } else {
                 // shift
                 for (int i = PIPELINE_LATENCY - 1; i > 0; i--) {
@@ -107,11 +110,13 @@ int main(int argc, char** argv, char** env) {
                 a = (uint16_t)dut->i_a;
                 b = (uint16_t)dut->i_b;
                 product64 = (uint64_t)a * (uint64_t)b;
-                shifted   = product64 << 8;
-                shifted &= ((1ULL << 40) - 1);
+                product64 &= OUT_MASK;   // padding only
 
+                if (dut->i_valid) {
+                    exp_acc = (exp_acc + product64) & OUT_MASK;
+                }
 
-                exp_data_q[0] = shifted;
+                exp_data_q[0]  = exp_acc;
                 exp_valid_q[0] = dut->i_valid;
                 exp_test_q[0]  = current_test;
 

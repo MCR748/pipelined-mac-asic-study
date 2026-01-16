@@ -5,6 +5,7 @@
     "../work/MAC/rtl/mac/mac_pkg.sv",
     "../work/MAC/rtl/mac/mac_adder.sv",
     "../work/MAC/rtl/mac/mac_csa.sv",
+    "../work/MAC/rtl/mac/mac_accumulator.sv",
     "../work/MAC/rtl/mac/mac_mul.sv",
     "../work/MAC/rtl/mac/mac_top.sv"
   ],
