@@ -39,7 +39,7 @@ module mac_top #(
 
 
             // Accumulator stage
-            r_o_val <= {w_mul_val << 8, 8'b0};
+            r_o_val <= {8'b0, w_mul_val} << 8;
             r_o_valid <= w_mul_valid;
         end
     end

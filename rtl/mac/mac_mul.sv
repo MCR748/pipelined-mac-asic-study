@@ -54,6 +54,8 @@ module mac_mul #(
     reg [OUTPUT_WIDTH - 1 : 0] r_adder_b;
     reg r_adder_valid;
 
+    wire [OUTPUT_WIDTH-1:0] w_adder_out;
+    wire w_adder_valid;
 
     reg [OUTPUT_WIDTH - 1 : 0] r_o_val;
     reg r_o_valid;
@@ -151,8 +153,8 @@ module mac_mul #(
             r_adder_valid <= r_stg3_valid;
             
             // Stage 4
-            r_o_val <= r_adder_a + r_adder_b;
-            r_o_valid <= r_adder_valid;
+            r_o_val   <= w_adder_out;
+            r_o_valid <= w_adder_valid;
         end
     end
 
@@ -240,6 +242,17 @@ module mac_mul #(
                 .o_add_sum   (w_stg6_sum), .o_add_carry (w_stg6_carry)
             );
 
+    mac_adder #(
+      .INPUT_WIDTH(OUTPUT_WIDTH)
+    ) u_mac_adder (
+      .i_clk         (i_clk),
+      .i_rst        (i_rst),          // note polarity fix
+      .i_adder_a     (r_adder_a),
+      .i_adder_b     (r_adder_b),
+      .i_adder_valid (r_adder_valid),
+      .o_adder_val   (w_adder_out),
+      .o_adder_valid (w_adder_valid)
+    );
 
     assign o_mul_val = r_o_val;
     assign o_mul_valid = r_o_valid;

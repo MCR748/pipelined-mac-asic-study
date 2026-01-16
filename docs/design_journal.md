@@ -81,25 +81,30 @@ The project is structured in stages:
          - Detect semantic mismatches between intended datapath behavior and RTL implementation.
       - Simulation results were not used to justify timing decisions, only to confirm correctness before entering the ASIC flow.
 
-1. **Stage 1A – Multiplier Timing Closure**
-   - Datapath skeleton with registered stages
-   - Focus on implementing a correct, signed multiplier
-   - Multiplier designed and refined to meet timing targets
-   - Accumulation logic remains functionally placeholder
-   - Objective is to isolate and close timing on the multiplier path
+1. **Stage 1A – Unsigned Multiplier Timing Closure**
+   - Datapath skeleton with fully registered pipeline stages
+   - Implementation of an **unsigned** multiplier using partial-product generation, CSA reduction, and a final carry-propagate adder (CPA)
+   - Focus on isolating and closing timing on the multiplier datapath
+   - No accumulation feedback
+   - Signed arithmetic explicitly deferred
+   - Objective is to characterize CSA vs CPA timing behavior under aggressive clock targets
 
-2. **Stage 1B – Adder / Accumulator Timing Closure**
-   - Multiplier implementation from Stage 1A retained
-   - Accumulator adder implemented and refined to meet timing
-   - Feedback path analyzed and optimized
-   - Datapath now functionally represents a MAC
-   - Objective is to close timing on the loop-carried accumulation path
+2. **Stage 1B – Unsigned Accumulator Timing Closure**
+   - Unsigned multiplier from Stage 1A retained without modification
+   - Accumulator adder and feedback path introduced
+   - Loop-carried dependency analyzed and optimized
+   - Datapath now functionally represents an **unsigned MAC**
+   - Objective is to close timing on the accumulator feedback path independently of signed arithmetic complexity
 
-3. **Stage 1C – Datapath Refinement and Latency Alignment**
-   - Joint optimization of multiplier and accumulator pipeline structure
-   - Latency alignment and valid propagation refinement
-   - Exploration of cycle-accurate vs latency-correct semantics
-   - Explicit breaking or restructuring of critical feedback paths
+3. **Stage 1C – Signed Arithmetic Integration**
+   - Conversion of the unsigned multiplier from Stage 1B into a **signed** multiplier
+   - Introduction of:
+     - Sign extension
+     - MSB partial-product negation
+     - Correction terms (e.g., Baugh–Wooley style)
+   - Restructuring and pipelining of Stage-0 logic as required
+   - Latency and valid propagation re-aligned
+   - Objective is to quantify the timing and structural cost of signed arithmetic on a stabilized datapath
 
 4. **Stage 2 – Control Integration**
    - APB-based register interface
@@ -279,3 +284,18 @@ Based on observed timing behavior, the valid architectural options are:
 - Explicitly reject the assumption that CTS or routing optimization will resolve CPA-dominated timing paths
 
 These options define the constrained and realistic solution space for subsequent iterations.
+
+### F. Signed Multiplication: Architectural Reality Check
+
+During implementation, it became clear that signed multiplication is not a semantic attribute but an architectural one.
+
+Initial multiplier structures were derived from unsigned partial-product generation and CSA reduction. While functionally correct for unsigned operands, extending this structure to signed arithmetic introduced:
+   - Additional sign-extension logic
+   - Conditional negation of MSB partial products
+   - Baugh–Wooley-style correction terms
+
+These modifications significantly increased logic depth and fanout in Stage-0, directly impacting timing.
+
+A key learning was that signed-multiplier support must be treated as a first-class architectural decision, not a late-stage functional patch. Retrofitting signed behavior into an unsigned reduction tree complicates both timing closure and verification.
+
+As a result, subsequent iterations temporarily constrained the multiplier to unsigned operation to isolate datapath timing behavior, with the intention of reintroducing signed support via a structurally correct, pipelined signed-multiplier architecture.
