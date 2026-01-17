@@ -317,4 +317,27 @@ These artifacts justify architectural decisions between iterations.
 - ### Phase Transition
     - This concludes the **Unsigned MAC Architectural Exploration Phase**. Subsequent work proceeds as mentioned under *Next Phase Objectives*.
 
+## Iteration 3.1 – CSA Input Registration to Isolate Control Logic
+
+- ### Change
+    - The CSA accumulator exhibited timing degradation due to control-dependent logic in its input cone, specifically the `mul_valid`-gated mux feeding the CSA operand.
+    - To eliminate this, the muxed product value was registered, capturing the `product_or_zero` result in a dedicated pipeline register prior to the CSA.
+    - This ensured that all CSA inputs (`acc_sum`, `acc_carry`, `product`) are register-sourced, removing multiplier control logic from the accumulator feedback path.
+
+- ### Timing Impact
+    - This modification eliminated several previously observed violations involving control-to-accumulator paths, including:
+        - `u_mac_mul.o_mul_valid → r_acc_sum[*]`
+        - `u_mac_mul.o_mul_valid → r_acc_carry[*]`
+
+    - Post-route STA confirmed that these paths no longer contribute to the critical timing cone, indicating improved isolation of the accumulator loop.
+
+- ### Residual Violation
+    - A marginal setup violation remains on the accumulator feedback path itself:
+        ```
+        r_acc_sum[i]/Q → CSA logic → r_acc_sum[i]/D
+        ```
+    - This is a single-cycle register-to-itself path within the CSA-based accumulation loop, with worst negative slack on the order of a few picoseconds.
+    - This hits the technology-imposed frequency limit as only CSA feedback path remains, unless an architectural revision is considered.
+
+
 
