@@ -20,17 +20,12 @@ module mac_top #(
     wire [OUTPUT_WIDTH-1:0] w_acc_val;
     wire                    w_acc_valid;
 
+    reg [OUTPUT_WIDTH-1:0] r__padded_product;
+    reg                    r_product_val;
+
     reg [OUTPUT_WIDTH-1:0] r_acc_sum;
     reg [OUTPUT_WIDTH-1:0] r_acc_carry;
     reg r_acc_valid;
-    
-    wire [OUTPUT_WIDTH-1:0] product_or_zero;
-
-    wire [OUTPUT_WIDTH-1:0] w_product_padded;
-
-    wire [OUTPUT_WIDTH-1:0] w_csa_sum_next;
-    wire [OUTPUT_WIDTH-1:0] w_csa_carry_next;
-
 
     reg [OUTPUT_WIDTH - 1 : 0] r_o_val;
     reg r_o_valid;
@@ -44,10 +39,13 @@ module mac_top #(
             r_o_val <= '0;
             r_i_valid <= 0;
 
+            r__padded_product <= '0;
+            r_product_val <= 0;
+
             r_acc_sum <= '0;
             r_acc_carry <= '0;
             r_acc_valid <= 0;
-
+                        
             r_o_valid <= 0;
         end
         else
@@ -57,23 +55,18 @@ module mac_top #(
             r_b <= i_b;
             r_i_valid <= i_valid;
 
-            r_acc_sum   <= w_csa_sum_next;
-            r_acc_carry <= w_csa_carry_next;
-            r_acc_valid <= w_mul_valid;
+            r__padded_product <= w_mul_valid ? {8'b0, w_mul_val} : '0;
+            r_product_val <= w_mul_valid;
+
+            r_acc_sum   <= r_acc_sum ^ r_acc_carry ^ r__padded_product;
+            r_acc_carry <= ((r_acc_sum & r_acc_carry) | (r_acc_sum & r__padded_product) | (r_acc_carry & r__padded_product)) << 1;
+            r_acc_valid <= r_product_val;
 
             // Accumulator stage
             r_o_val <= w_acc_val;
             r_o_valid <= w_acc_valid;
         end
     end
-
-    assign w_product_padded = {8'b0, w_mul_val};
-
-    assign product_or_zero = w_mul_valid ? w_product_padded : '0;
-
-    assign w_csa_sum_next =   r_acc_sum ^ r_acc_carry ^ product_or_zero;
-
-    assign w_csa_carry_next = ((r_acc_sum & r_acc_carry) | (r_acc_sum & product_or_zero) | (r_acc_carry & product_or_zero)) << 1;
 
     assign o_val = r_o_val;
     assign o_valid = r_o_valid;

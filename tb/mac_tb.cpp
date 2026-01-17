@@ -6,7 +6,7 @@
 #include "Vmac_top.h"
 
 #define MAX_SIM_TIME 300
-#define PIPELINE_LATENCY 26
+#define PIPELINE_LATENCY 27
 
 struct test_vec {int cycle; uint16_t a;  uint16_t b;};
 

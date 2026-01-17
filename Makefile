@@ -18,9 +18,7 @@ VERILATOR  := verilator
 
 VFLAGS := --cc --exe --trace --sv -Wall --x-assign unique --x-initial unique -I$(RTL_DIR)
 
-RTL_SRCS := \
-	$(RTL_DIR)/mac_pkg.sv \
-	$(RTL_DIR)/mac_top.sv
+RTL_SRCS := $(RTL_DIR)
 
 TB_CPP := $(TB_DIR)/mac_tb.cpp
 
@@ -36,11 +34,11 @@ sim: waves
 .PHONY: verilate
 verilate: .stamp.verilate
 
-.stamp.verilate: $(RTL_SRCS) $(TB_CPP)
+.stamp.verilate: $(TB_CPP) $(RTL_SRCS)/*.sv 
 	@echo
 	@echo "### VERILATING ###"
 	$(VERILATOR) $(VFLAGS) \
-		$(RTL_SRCS) \
+		$(RTL_SRCS)/mac_top.sv \
 		--top-module $(TOP) \
 		--exe $(TB_CPP)
 	@touch $@
