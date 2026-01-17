@@ -79,15 +79,35 @@ flow:
 	cd $(LIBRELANE_DIR) && . $(HOME)/librelane-venv/bin/activate && \
 	python3 -m librelane --dockerized --pdk-root $(HOME)/.ciel/ciel $(PROJECT_DIR)/flow/librelane/$(STAGE)/config.json
 
+.PHONY: extract-violations
+extract-violations:
+	@python3 scripts/extract_violations.py
+
 .PHONY: flow-prune
 flow-prune:
-	@echo "Pruning LibreLane runs (keeping latest)..."
-	@RUN_DIR="$(PROJECT_DIR)/flow/librelane/$(STAGE)/runs"; \
+	@echo "Pruning LibreLane runs and extracts (keeping latest)..."
+	@set -e; \
+	RUN_DIR="$(PROJECT_DIR)/flow/librelane/$(STAGE)/runs"; \
+	EXT_DIR="$(PROJECT_DIR)/flow/librelane/$(STAGE)/extracts"; \
+	\
 	if [ -d "$$RUN_DIR" ]; then \
-		ls -1dt $$RUN_DIR/RUN_* 2>/dev/null | tail -n +2 | xargs -r rm -rf; \
+		LATEST_RUN=$$(ls -dt $$RUN_DIR/RUN_* 2>/dev/null | head -n 1); \
+		if [ -n "$$LATEST_RUN" ]; then \
+			find $$RUN_DIR -mindepth 1 -maxdepth 1 -type d ! -path "$$LATEST_RUN" -exec rm -rf {} +; \
+		fi; \
 	else \
 		echo "No runs directory found."; \
+	fi; \
+	\
+	if [ -d "$$EXT_DIR" ]; then \
+		if [ -n "$$LATEST_RUN" ]; then \
+			LATEST_NAME=$$(basename $$LATEST_RUN); \
+			find $$EXT_DIR -mindepth 1 -maxdepth 1 -type d ! -name "$$LATEST_NAME" -exec rm -rf {} +; \
+		fi; \
+	else \
+		echo "No extracts directory found."; \
 	fi
+
 
 # ----------------------------------------------------------
 

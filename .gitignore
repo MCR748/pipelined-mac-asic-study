@@ -20,6 +20,9 @@ obj_dir/
 # LibreLane generated runs
 flow/librelane/*/runs/
 
+# LibreLane extracted analysis artifacts
+flow/librelane/*/extracts/
+
 # Tool-generated netlists
 *.vg
 *.vnet
