@@ -319,25 +319,53 @@ These artifacts justify architectural decisions between iterations.
 
 ## Iteration 3.1 – CSA Input Registration to Isolate Control Logic
 
-- ### Change
-    - The CSA accumulator exhibited timing degradation due to control-dependent logic in its input cone, specifically the `mul_valid`-gated mux feeding the CSA operand.
-    - To eliminate this, the muxed product value was registered, capturing the `product_or_zero` result in a dedicated pipeline register prior to the CSA.
-    - This ensured that all CSA inputs (`acc_sum`, `acc_carry`, `product`) are register-sourced, removing multiplier control logic from the accumulator feedback path.
+- ### On Accumulator circuit CSA
 
-- ### Timing Impact
-    - This modification eliminated several previously observed violations involving control-to-accumulator paths, including:
-        - `u_mac_mul.o_mul_valid → r_acc_sum[*]`
-        - `u_mac_mul.o_mul_valid → r_acc_carry[*]`
+    - #### Change
+        - The CSA accumulator exhibited timing degradation due to control-dependent logic in its input cone, specifically the `mul_valid`-gated mux feeding the CSA operand.
+        - To eliminate this, the muxed product value was registered, capturing the `product_or_zero` result in a dedicated pipeline register prior to the CSA.
+        - This ensured that all CSA inputs (`acc_sum`, `acc_carry`, `product`) are register-sourced, removing multiplier control logic from the accumulator feedback path.
 
-    - Post-route STA confirmed that these paths no longer contribute to the critical timing cone, indicating improved isolation of the accumulator loop.
+    - #### Timing Impact
+        - This modification eliminated several previously observed violations involving control-to-accumulator paths, including:
+            - `u_mac_mul.o_mul_valid → r_acc_sum[*]`
+            - `u_mac_mul.o_mul_valid → r_acc_carry[*]`
 
-- ### Residual Violation
-    - A marginal setup violation remains on the accumulator feedback path itself:
-        ```
-        r_acc_sum[i]/Q → CSA logic → r_acc_sum[i]/D
-        ```
-    - This is a single-cycle register-to-itself path within the CSA-based accumulation loop, with worst negative slack on the order of a few picoseconds.
-    - This hits the technology-imposed frequency limit as only CSA feedback path remains, unless an architectural revision is considered.
+        - Post-route STA confirmed that these paths no longer contribute to the critical timing cone, indicating improved isolation of the accumulator loop.
+
+    - #### Residual Violation
+        - A marginal setup violation remains on the accumulator feedback path itself:
+            ```
+            r_acc_sum[i]/Q → CSA logic → r_acc_sum[i]/D
+            ```
+        - This is a single-cycle register-to-itself path within the CSA-based accumulation loop, with worst negative slack on the order of a few picoseconds.
+        - This hits the technology-imposed frequency limit as only CSA feedback path remains, unless an architectural revision is considered.
+        - This residual violation reflects a technology-limited CSA feedback path, where the worst-case bit is determined by physical placement and routing rather than arithmetic significance.
+
+- ### On Wallace tree CSA
+    - #### Observation
+        - Gate-level netlist inspection was performed on the reported violating paths.
+        - The inspected paths confirm that each CSA level is terminated by a register.
+        - Specifically, CSA_L3 combinational logic feeds a flip-flop, and CSA_L4 logic begins from that register output:
+            ```
+            r_stg3[x][bit]/Q → CSA_L4 logic → r_stg4[y][bit]/D
+            ```
+        - No unintended combinational chaining exists between CSA stages.
+        - RTL intent (“one CSA level per cycle”) is preserved through synthesis and PnR.
+
+    - #### Implication
+        - The observed timing violations are not caused by missing or absorbed registers.
+        - The architectural structure of the CSA pipeline is correct and unchanged.
+        - Despite correct registration, setup violations persist, indicating a technology-limited single-cycle CSA datapath at the target frequency.
+
+    - #### Conclusion
+        - The remaining failures are:
+            - Datapath-only
+            - Single-cycle
+            - Bit-selective
+            - Independent of control logic
+        - Further PnR effort is unlikely to resolve these violations.
+        - Timing closure at 500 MHz would require architectural modification or a reduced clock target.
 
 
 
