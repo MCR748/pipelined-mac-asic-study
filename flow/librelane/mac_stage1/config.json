@@ -2,7 +2,6 @@
   "DESIGN_NAME": "mac_top",
 
   "VERILOG_FILES": [
-    "../work/MAC/rtl/mac/mac_pkg.sv",
     "../work/MAC/rtl/mac/mac_adder.sv",
     "../work/MAC/rtl/mac/mac_csa.sv",
     "../work/MAC/rtl/mac/mac_accumulator.sv",
